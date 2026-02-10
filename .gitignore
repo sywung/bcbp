@@ -1,0 +1,50 @@
+# macOS 系統自動產生的檔案
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# VSCode 相關檔案
+.vscode/
+
+# Node.js (如果是 Node.js 專案)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# 設定檔及編譯輸出
+/dist/
+/build/
+/out/
+
+# 忽略 IntelliJ IDEA 和 JetBrains 工具生成的檔案
+.idea/
+
+# 忽略編譯過程產生的中間檔案
+*.log
+*.swp
+*.swo
+
+# 忽略 macOS 的內部文件，像是沙盒檔案等
+*.plist
+*.db
+
+# 忽略 Python 相關檔案（如果是 Python 專案）
+*.pyc
+*.pyo
+__pycache__/
+
+# 忽略 Java 相關檔案（如果是 Java 專案）
+*.class
+*.jar
+*.war
+
+# 忽略 Rust 相關檔案（如果是 Rust 專案）
+/target/
+
+# 忽略 C++ / C 相關檔案（如果是 C++ / C 專案）
+*.o
+*.obj
+*.out
+*.a
+*.so
+
