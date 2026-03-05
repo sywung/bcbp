@@ -87,7 +87,7 @@ void BleManager::begin(const char* deviceName) {
     pAdvertising->setScanResponse(true);
     pAdvertising->start();
     
-    Serial.printf("[BLE] Advertising started as %s (Initial Battery: %d%%)\n", deviceName, _batteryLevel);
+    BCBP_LOGF("[BLE] Advertising started as %s (Initial Battery: %d%%)\n", deviceName, _batteryLevel);
 }
 
 void BleManager::update() {
@@ -120,7 +120,7 @@ void BleManager::sendButtonEvent(uint8_t targetId, ButtonAction action) {
     _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
     _pTxCharacteristic->notify();
     
-    Serial.printf("[BLE] Sent Button Packet: ID=%d, ACT=%d, SEQ=%d\n", targetId, (uint8_t)action, packet.sequence);
+    BCBP_LOGF("[BLE] Sent Button Packet: ID=%d, ACT=%d, SEQ=%d\n", targetId, (uint8_t)action, packet.sequence);
 }
 
 void BleManager::sendDigitalReport(uint8_t channel, bool state) {
@@ -141,7 +141,7 @@ void BleManager::sendDigitalReport(uint8_t channel, uint8_t state) {
     _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
     _pTxCharacteristic->notify();
     
-    Serial.printf("[BLE] Sent DI Packet: CH=%d, STATE=%d, SEQ=%d\n", channel, state, packet.sequence);
+    BCBP_LOGF("[BLE] Sent DI Packet: CH=%d, STATE=%d, SEQ=%d\n", channel, state, packet.sequence);
 }
 
 void BleManager::sendAnalogReport(uint8_t channel, uint16_t value) {
@@ -158,7 +158,58 @@ void BleManager::sendAnalogReport(uint8_t channel, uint16_t value) {
     _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
     _pTxCharacteristic->notify();
     
-    Serial.printf("[BLE] Sent AI Packet: CH=%d, VALUE=%d\n", channel, value);
+    BCBP_LOGF("[BLE] Sent AI Packet: CH=%d, VALUE=%d\n", channel, value);
+}
+
+void BleManager::sendHapticFeedback(HapticPattern pattern, uint8_t intensity) {
+    if (!_deviceConnected) return;
+
+    BcbpPacketV1 packet;
+    packet.version = BCBP_V1;
+    packet.command = CMD_HAPTIC;
+    packet.targetId = (uint8_t)pattern;
+    packet.action = intensity;
+    packet.sequence = _sequence++;
+    packet.crc8 = BcbpProtocol::calculateCRC8((uint8_t*)&packet, 5);
+
+    _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
+    _pTxCharacteristic->notify();
+    
+    BCBP_LOGF("[BLE] Sent Haptic: PAT=%d, INT=%d\n", (uint8_t)pattern, intensity);
+}
+
+void BleManager::sendSoundFeedback(SoundID soundId, uint8_t volume) {
+    if (!_deviceConnected) return;
+
+    BcbpPacketV1 packet;
+    packet.version = BCBP_V1;
+    packet.command = CMD_SOUND;
+    packet.targetId = (uint8_t)soundId;
+    packet.action = volume;
+    packet.sequence = _sequence++;
+    packet.crc8 = BcbpProtocol::calculateCRC8((uint8_t*)&packet, 5);
+
+    _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
+    _pTxCharacteristic->notify();
+    
+    BCBP_LOGF("[BLE] Sent Sound: ID=%d, VOL=%d\n", (uint8_t)soundId, volume);
+}
+
+void BleManager::sendCombinedFeedback(HapticPattern pattern, SoundID soundId) {
+    if (!_deviceConnected) return;
+
+    BcbpPacketV1 packet;
+    packet.version = BCBP_V1;
+    packet.command = CMD_FEEDBACK;
+    packet.targetId = (uint8_t)pattern;
+    packet.action = (uint8_t)soundId;
+    packet.sequence = _sequence++;
+    packet.crc8 = BcbpProtocol::calculateCRC8((uint8_t*)&packet, 5);
+
+    _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
+    _pTxCharacteristic->notify();
+    
+    BCBP_LOGF("[BLE] Sent Feedback: HAP=%d, SND=%d\n", (uint8_t)pattern, (uint8_t)soundId);
 }
 
 void BleManager::setBatteryLevel(uint8_t level) {
@@ -184,7 +235,7 @@ void BleManager::setBatteryLevel(uint8_t level) {
 
 void BleManager::ServerCallbacks::onConnect(NimBLEServer* pServer) {
     BleManager::getInstance()._deviceConnected = true;
-    Serial.println("[BLE] Client connected");
+    BCBP_LOG("[BLE] Client connected");
     if (BleManager::getInstance()._connectionCallback) {
         BleManager::getInstance()._connectionCallback(true);
     }
@@ -192,12 +243,12 @@ void BleManager::ServerCallbacks::onConnect(NimBLEServer* pServer) {
 
 void BleManager::ServerCallbacks::onDisconnect(NimBLEServer* pServer) {
     BleManager::getInstance()._deviceConnected = false;
-    Serial.println("[BLE] Client disconnected");
+    BCBP_LOG("[BLE] Client disconnected");
     if (BleManager::getInstance()._connectionCallback) {
         BleManager::getInstance()._connectionCallback(false);
     }
     NimBLEDevice::startAdvertising();
-    Serial.println("[BLE] Advertising restarted");
+    BCBP_LOG("[BLE] Advertising restarted");
 }
 
 void BleManager::CharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic) {
@@ -210,9 +261,9 @@ void BleManager::CharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharact
                 BleManager::getInstance()._packetCallback(packet);
             }
         } else {
-            Serial.println("[BLE] Received invalid BCBP packet");
+            BCBP_LOG("[BLE] Received invalid BCBP packet");
         }
     } else {
-        Serial.printf("[BLE] Received data length: %d\n", value.length());
+        BCBP_LOGF("[BLE] Received data length: %d\n", value.length());
     }
 }

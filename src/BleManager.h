@@ -7,6 +7,19 @@
 #include <functional>
 #include "BcbpProtocol.h"
 
+// Debug Logging Macros
+#ifndef BCBP_ENABLE_DEBUG
+#define BCBP_ENABLE_DEBUG 1  // Set to 0 to completely remove debug code
+#endif
+
+#if BCBP_ENABLE_DEBUG
+  #define BCBP_LOGF(...) Serial.printf(__VA_ARGS__)
+  #define BCBP_LOG(...)  Serial.println(__VA_ARGS__)
+#else
+  #define BCBP_LOGF(...)
+  #define BCBP_LOG(...)
+#endif
+
 // Callback types
 typedef std::function<void(bool connected)> ConnectionCallback;
 typedef std::function<void(const BcbpPacketV1* packet)> PacketCallback;
@@ -31,6 +44,12 @@ public:
     void sendDigitalReport(uint8_t channel, bool state);
     void sendDigitalReport(uint8_t channel, uint8_t state);
     void sendAnalogReport(uint8_t channel, uint16_t value);
+    
+    // Device -> App Feedback
+    void sendHapticFeedback(HapticPattern pattern, uint8_t intensity = 0xFF);
+    void sendSoundFeedback(SoundID soundId, uint8_t volume = 0xFF);
+    void sendCombinedFeedback(HapticPattern pattern, SoundID soundId);
+
     void setBatteryLevel(uint8_t level);
     bool isConnected();
 
