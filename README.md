@@ -173,20 +173,50 @@ BleManager::getInstance().setBatteryLevel(95);
 *   `void sendDigitalReport(uint8_t channel, bool state)`: 發送布林狀態 (0 或 1)。
 *   `void sendDigitalReport(uint8_t channel, uint8_t state)`: 發送 8-bit 位元組狀態。
 *   `void sendAnalogReport(uint8_t channel, uint16_t value)`
+*   `void sendHapticFeedback(HapticPattern pattern, uint8_t intensity = 0xFF)`: 發送震動回饋給 App。
+*   `void sendSoundFeedback(SoundID soundId, uint8_t volume = 0xFF)`: 發送音效回饋給 App。
+*   `void sendCombinedFeedback(HapticPattern pattern, SoundID soundId)`: 同時發送震動與音效回饋。
 *   `void setBatteryLevel(uint8_t level)`
+
+### 編譯設定 (Debug Mode)
+
+本函式庫支援編譯時期的偵錯輸出控制。在引入標頭檔前定義 `BCBP_ENABLE_DEBUG`：
+
+*   `#define BCBP_ENABLE_DEBUG 1` (預設)：啟用 Serial 偵錯輸出。
+*   `#define BCBP_ENABLE_DEBUG 0`：完全移除偵錯程式碼，節省 Flash 空間。
 
 ## 協定常數 (`BcbpProtocol.h`)
 
 **指令類型 (`packet->command`):**
-*   `CMD_BUTTON` (0x01)
-*   `CMD_JOYSTICK` (0x02)
-*   `CMD_DIGITAL` (0x11)
-*   `CMD_ANALOG` (0x12)
+*   **App → Device (RX):**
+    *   `CMD_BUTTON` (0x01)
+    *   `CMD_JOYSTICK` (0x02)
+    *   `CMD_DIGITAL` (0x11)
+    *   `CMD_ANALOG` (0x12)
+*   **Device → App (TX):**
+    *   `CMD_HAPTIC` (0x21)
+    *   `CMD_SOUND` (0x22)
+    *   `CMD_FEEDBACK` (0x23)
 
 **按鈕動作 (`packet->action`):**
 *   `ACT_SHORT` (0x01)
 *   `ACT_LONG` (0x02)
 *   `ACT_DOUBLE` (0x03)
+
+**震動模式 (`HapticPattern`):**
+*   `HAPTIC_SHORT` (0x01)
+*   `HAPTIC_LONG` (0x02)
+*   `HAPTIC_DOUBLE` (0x03)
+*   `HAPTIC_SUCCESS` (0x04)
+*   `HAPTIC_ERROR` (0x05)
+*   `HAPTIC_WARNING` (0x06)
+
+**音效 ID (`SoundID`):**
+*   `SOUND_BEEP` (0x01)
+*   `SOUND_SUCCESS` (0x02)
+*   `SOUND_ERROR` (0x03)
+*   `SOUND_ALERT` (0x04)
+*   `SOUND_DOUBLE` (0x05)
 
 ## 範例程式碼
 
