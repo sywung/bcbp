@@ -185,40 +185,124 @@ BleManager::getInstance().setBatteryLevel(95);
 *   `#define BCBP_ENABLE_DEBUG 1` (預設)：啟用 Serial 偵錯輸出。
 *   `#define BCBP_ENABLE_DEBUG 0`：完全移除偵錯程式碼，節省 Flash 空間。
 
-## 協定常數 (`BcbpProtocol.h`)
+## 6. 協定規範 (Protocol Specification)
 
-**指令類型 (`packet->command`):**
-*   **App → Device (RX):**
-    *   `CMD_BUTTON` (0x01)
-    *   `CMD_JOYSTICK` (0x02)
-    *   `CMD_DIGITAL` (0x11)
-    *   `CMD_ANALOG` (0x12)
-*   **Device → App (TX):**
-    *   `CMD_HAPTIC` (0x21)
-    *   `CMD_SOUND` (0x22)
-    *   `CMD_FEEDBACK` (0x23)
+### 6.1 協定版本 (Versioning)
 
-**按鈕動作 (`packet->action`):**
-*   `ACT_SHORT` (0x01)
-*   `ACT_LONG` (0x02)
-*   `ACT_DOUBLE` (0x03)
+| 版本 | 說明 |
+|-------|------|
+| v1 | 固定長度控制封包（6 bytes），適用於多數 BLE 裝置。 |
+| v2 | 可變長度封包（保留擴充用，需較大 MTU）。 |
 
-**震動模式 (`HapticPattern`):**
-*   `HAPTIC_SHORT` (0x01)
-*   `HAPTIC_LONG` (0x02)
-*   `HAPTIC_DOUBLE` (0x03)
-*   `HAPTIC_SUCCESS` (0x04)
-*   `HAPTIC_ERROR` (0x05)
-*   `HAPTIC_WARNING` (0x06)
+- **Byte 0 永遠為協定版本號 (Protocol Version)**
+- 裝置必須忽略不支援的版本號。
 
-**音效 ID (`SoundID`):**
-*   `SOUND_BEEP` (0x01)
-*   `SOUND_SUCCESS` (0x02)
-*   `SOUND_ERROR` (0x03)
-*   `SOUND_ALERT` (0x04)
-*   `SOUND_DOUBLE` (0x05)
+### 6.2 BCBP v1 封包格式 (Packet Format)
 
-## 範例程式碼
+- **固定長度：6 bytes**
+
+#### Byte Layout
+
+| Byte 0 | Byte 1 | Byte 2 | Byte 3 | Byte 4 | Byte 5 |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| Version | Command | TargetID | Action | Sequence | CRC8 |
+
+#### 欄位定義 (Field Definition)
+
+| 位元組 | 名稱 | 說明 |
+| :---: | :--- | :--- |
+| 0 | Version | 協定版本 (目前為 `0x01`) |
+| 1 | Command | 指令類型 |
+| 2 | TargetID | 按鈕、通道或目標 ID |
+| 3 | Action | 動作類型或參數 |
+| 4 | Sequence | 封包序號 (遞增計數器) |
+| 5 | CRC8 | 數據完整性檢查 |
+
+#### 指令方向慣例 (Direction Convention)
+
+指令數值範圍用於區分封包方向：
+
+| 範圍 | 方向 | GATT 特徵值 (Characteristic) |
+|------|------|---------------------|
+| `0x01 ~ 0x1F` | App → Device | RX (Write) |
+| `0x21 ~ 0x3F` | Device → App | TX (Notify) |
+
+> App 收到不支援的 Command（尤其在 `0x21~0x3F` 範圍內）應靜默忽略，不得因此中斷連線。
+
+## 7. 列舉型別定義 (Enum Definitions - v1)
+
+### 7.1 指令 (BcbpCommand)
+
+```cpp
+enum BcbpCommand : uint8_t {
+  // --- App → Device ---
+  CMD_BUTTON   = 0x01,  // 按鈕事件
+  CMD_JOYSTICK = 0x02,  // 搖桿座標
+  CMD_DIGITAL  = 0x11,  // 數位狀態報告
+  CMD_ANALOG   = 0x12,  // 類比數值報告
+
+  // --- Device → App ---
+  CMD_HAPTIC   = 0x21,  // 觸覺震動回饋
+  CMD_SOUND    = 0x22,  // 聲音回饋
+  CMD_FEEDBACK = 0x23,  // 同時觸發震動與聲音
+};
+```
+
+### 7.2 按鈕動作 (ButtonAction)
+
+```cpp
+enum ButtonAction : uint8_t {
+  ACT_SHORT  = 0x01,  // 短按
+  ACT_LONG   = 0x02,  // 長按
+  ACT_DOUBLE = 0x03   // 雙擊
+};
+```
+
+### 7.3 搖桿標記 (JoystickFlags)
+
+```cpp
+enum JoystickFlags : uint8_t {
+  JS_ABSOLUTE = 0x00,  // 絕對值 (-127 ~ +127)
+  JS_RELATIVE = 0x01   // 相對位移 (Delta)
+};
+```
+
+### 7.4 震動模式 (HapticPattern)
+
+用於 `CMD_HAPTIC` (Byte 2) 與 `CMD_FEEDBACK` (Byte 2)。
+
+```cpp
+enum HapticPattern : uint8_t {
+  HAPTIC_SHORT   = 0x01,  // 短震 (~50ms)
+  HAPTIC_LONG    = 0x02,  // 長震 (~300ms)
+  HAPTIC_DOUBLE  = 0x03,  // 雙震
+  HAPTIC_SUCCESS = 0x04,  // 成功 (短-長)
+  HAPTIC_ERROR   = 0x05,  // 錯誤 (長-長-長)
+  HAPTIC_WARNING = 0x06,  // 警告 (短-短)
+};
+```
+
+- **Byte 3 Intensity**: `0x00~0x64` (0–100%)；`0xFF` = 裝置預設強度。
+- App 不支援震動時（如硬體限制）應靜默忽略。
+
+### 7.5 音效 ID (SoundID)
+
+用於 `CMD_SOUND` (Byte 2) 與 `CMD_FEEDBACK` (Byte 3)。
+
+```cpp
+enum SoundID : uint8_t {
+  SOUND_BEEP    = 0x01,  // 單響 Beep
+  SOUND_SUCCESS = 0x02,  // 成功音效
+  SOUND_ERROR   = 0x03,  // 錯誤音效
+  SOUND_ALERT   = 0x04,  // 警告音效
+  SOUND_DOUBLE  = 0x05,  // 雙響
+};
+```
+
+- **Byte 3 Volume**: `0x00~0x64` (0–100%)；`0xFF` = 系統預設音量。
+- App 處於靜音模式時應尊重系統設定。
+
+## 8. 範例程式碼
 
 ```cpp
 #include <BleManager.h>
