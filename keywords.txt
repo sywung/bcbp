@@ -1,0 +1,69 @@
+#######################################
+# Syntax Coloring Map For BleManager
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+BleManager	KEYWORD1
+BcbpPacketV1	KEYWORD1
+BcbpCommand	KEYWORD1
+ButtonAction	KEYWORD1
+JoystickFlags	KEYWORD1
+HapticPattern	KEYWORD1
+SoundID	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+getInstance	KEYWORD2
+begin	KEYWORD2
+update	KEYWORD2
+setConnectionCallback	KEYWORD2
+setPacketCallback	KEYWORD2
+isConnected	KEYWORD2
+setCustomUUIDs	KEYWORD2
+setServiceUUID	KEYWORD2
+setRxUUID	KEYWORD2
+setTxUUID	KEYWORD2
+sendButtonEvent	KEYWORD2
+sendDigitalReport	KEYWORD2
+sendAnalogReport	KEYWORD2
+sendHapticFeedback	KEYWORD2
+sendSoundFeedback	KEYWORD2
+sendCombinedFeedback	KEYWORD2
+setBatteryLevel	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+CMD_BUTTON	LITERAL1
+CMD_JOYSTICK	LITERAL1
+CMD_DIGITAL	LITERAL1
+CMD_ANALOG	LITERAL1
+CMD_HAPTIC	LITERAL1
+CMD_SOUND	LITERAL1
+CMD_FEEDBACK	LITERAL1
+
+ACT_SHORT	LITERAL1
+ACT_LONG	LITERAL1
+ACT_DOUBLE	LITERAL1
+
+JS_ABSOLUTE	LITERAL1
+JS_RELATIVE	LITERAL1
+
+HAPTIC_SHORT	LITERAL1
+HAPTIC_LONG	LITERAL1
+HAPTIC_DOUBLE	LITERAL1
+HAPTIC_SUCCESS	LITERAL1
+HAPTIC_ERROR	LITERAL1
+HAPTIC_WARNING	LITERAL1
+
+SOUND_BEEP	LITERAL1
+SOUND_SUCCESS	LITERAL1
+SOUND_ERROR	LITERAL1
+SOUND_ALERT	LITERAL1
+SOUND_DOUBLE	LITERAL1
