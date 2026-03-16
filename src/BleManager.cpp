@@ -84,7 +84,6 @@ void BleManager::begin(const char* deviceName) {
     scanResponseData.setServiceData(NimBLEUUID((uint16_t)0x180F), batteryData);
     
     pAdvertising->setScanResponseData(scanResponseData);
-    pAdvertising->setScanResponse(true);
     pAdvertising->start();
     
     BCBP_LOGF("[BLE] Advertising started as %s (Initial Battery: %d%%)\n", deviceName, _batteryLevel);
@@ -233,7 +232,7 @@ void BleManager::setBatteryLevel(uint8_t level) {
     }
 }
 
-void BleManager::ServerCallbacks::onConnect(NimBLEServer* pServer) {
+void BleManager::ServerCallbacks::onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) {
     BleManager::getInstance()._deviceConnected = true;
     BCBP_LOG("[BLE] Client connected");
     if (BleManager::getInstance()._connectionCallback) {
@@ -241,7 +240,7 @@ void BleManager::ServerCallbacks::onConnect(NimBLEServer* pServer) {
     }
 }
 
-void BleManager::ServerCallbacks::onDisconnect(NimBLEServer* pServer) {
+void BleManager::ServerCallbacks::onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) {
     BleManager::getInstance()._deviceConnected = false;
     BCBP_LOG("[BLE] Client disconnected");
     if (BleManager::getInstance()._connectionCallback) {
@@ -251,7 +250,7 @@ void BleManager::ServerCallbacks::onDisconnect(NimBLEServer* pServer) {
     BCBP_LOG("[BLE] Advertising restarted");
 }
 
-void BleManager::CharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic) {
+void BleManager::CharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) {
     std::string value = pCharacteristic->getValue();
     if (value.length() == BcbpProtocol::PACKET_SIZE_V1) {
         const uint8_t* data = (const uint8_t*)value.data();

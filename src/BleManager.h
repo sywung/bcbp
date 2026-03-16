@@ -72,12 +72,12 @@ private:
     PacketCallback _packetCallback;
 
     class ServerCallbacks : public NimBLEServerCallbacks {
-        void onConnect(NimBLEServer* pServer) override;
-        void onDisconnect(NimBLEServer* pServer) override;
+        void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override;
+        void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override;
     };
 
     class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
-        void onWrite(NimBLECharacteristic* pCharacteristic) override;
+        void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override;
     };
     
     // Friend classes to allow access to private members/callbacks

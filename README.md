@@ -1,4 +1,4 @@
-# Esp32BleControl 函式庫
+# BCBP 函式庫
 
 這是一個輕量級的 ESP32 Arduino 函式庫，專門用於 BLE 通訊，並實作了 **按鈕控制二進位協定 (BCBP)**。此函式庫負責處理 BLE 堆疊管理（基於 NimBLE）、廣播以及各類數據傳輸（如按鈕事件、數位/類比感測器報告和電池電量）。
 
@@ -12,7 +12,7 @@
 
 ## 相依套件
 
-*   [NimBLE-Arduino](https://github.com/h2zero/NimBLE-Arduino)
+*   [NimBLE-Arduino](https://github.com/h2zero/NimBLE-Arduino) (建議版本 **v2.1.0** 以上)
 
 ## 安裝方式 (PlatformIO)
 
@@ -21,9 +21,8 @@
 ```
 project_root/
 ├── lib/
-│   └── Esp32BleControl/
+│   └── bcbp/
 │       ├── README.md
-│       ├── README_zh-TW.md
 │       └── src/
 │           ├── BleManager.h
 │           ├── BleManager.cpp
@@ -38,7 +37,7 @@ project_root/
 ```ini
 [env:esp32dev]
 lib_deps =
-    h2zero/NimBLE-Arduino
+    h2zero/NimBLE-Arduino@^2.1.0
 ```
 
 ## 使用說明
