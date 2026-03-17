@@ -27,9 +27,10 @@ enum BcbpCommand : uint8_t {
 };
 
 enum ButtonAction : uint8_t {
-    ACT_SHORT  = 0x01,
-    ACT_LONG   = 0x02,
-    ACT_DOUBLE = 0x03
+    ACT_RELEASE = 0x00,
+    ACT_SHORT   = 0x01,
+    ACT_LONG    = 0x02,
+    ACT_DOUBLE  = 0x03
 };
 
 enum JoystickFlags : uint8_t {

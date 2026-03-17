@@ -251,9 +251,10 @@ enum BcbpCommand : uint8_t {
 
 ```cpp
 enum ButtonAction : uint8_t {
-  ACT_SHORT  = 0x01,  // 短按
-  ACT_LONG   = 0x02,  // 長按
-  ACT_DOUBLE = 0x03   // 雙擊
+  ACT_RELEASE = 0x00,  // 放開 (Release)
+  ACT_SHORT   = 0x01,  // 短按 (Short Press)
+  ACT_LONG    = 0x02,  // 長按 (Long Press)
+  ACT_DOUBLE  = 0x03   // 雙擊 (Double Click)
 };
 ```
 

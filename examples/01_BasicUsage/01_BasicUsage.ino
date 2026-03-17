@@ -47,13 +47,17 @@ void loop() {
 
     // 簡易的按鈕偵測範例
     bool currentState = digitalRead(BUTTON_PIN);
-    if (currentState == LOW && lastButtonState == HIGH) {
-        // 當按鈕按下時，發送一個「按鈕 1 短按」的事件給 App
+    if (currentState != lastButtonState) {
         if (BleManager::getInstance().isConnected()) {
-            Serial.println("發送按鈕事件...");
-            BleManager::getInstance().sendButtonEvent(1, ACT_SHORT);
-        } else {
-            Serial.println("尚未連線，無法發送");
+            if (currentState == LOW) {
+                // 當按鈕按下時
+                Serial.println("發送按鈕按下事件...");
+                BleManager::getInstance().sendButtonEvent(1, ACT_SHORT);
+            } else {
+                // 當按鈕放開時
+                Serial.println("發送按鈕放開事件...");
+                BleManager::getInstance().sendButtonEvent(1, ACT_RELEASE);
+            }
         }
         delay(50); // 簡易去彈跳
     }
