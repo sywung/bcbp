@@ -43,7 +43,7 @@ void loop() {
             if (battery > 10) battery--;
             BleManager::getInstance().setBatteryLevel(battery);
 
-            Serial.printf("已回報: Analog=%d, Digital=%d, Battery=%d%%", 
+            Serial.printf("已回報: Analog=%d, Digital=%d, Battery=%d%%\n", 
                           analogVal, !digitalVal, battery);
         }
     }

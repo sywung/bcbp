@@ -22,7 +22,7 @@ void onBleConnection(bool connected) {
 
 // 當接收到來自 App 的封包時會執行此函式
 void onBlePacketReceived(const BcbpPacketV1* packet) {
-    Serial.printf("收到封包 - 指令: 0x%02X, 目標: %d, 動作: %d", 
+    Serial.printf("收到封包 - 指令: 0x%02X, 目標: %d, 動作: %d\n", 
                   packet->command, packet->targetId, packet->action);
 }
 

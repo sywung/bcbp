@@ -46,7 +46,7 @@ void onBlePacket(const BcbpPacketV1* packet) {
         int8_t x = (int8_t)packet->targetId;
         int8_t y = (int8_t)packet->action;
 
-        Serial.printf("搖桿數據 -> X: %d, Y: %d", x, y);
+        Serial.printf("搖桿數據 -> X: %d, Y: %d\n", x, y);
 
         // 簡易的差速驅動演算法
         // 將 -100~100 對應到 PWM 的 -255~255
@@ -59,7 +59,7 @@ void onBlePacket(const BcbpPacketV1* packet) {
         setMotor(leftMotor, leftSpeed);
         setMotor(rightMotor, rightSpeed);
         
-        Serial.printf("馬達出力 -> 左: %d, 右: %d", leftSpeed, rightSpeed);
+        Serial.printf("馬達出力 -> 左: %d, 右: %d\n", leftSpeed, rightSpeed);
     }
 }
 
