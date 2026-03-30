@@ -22,8 +22,25 @@ void onBleConnection(bool connected) {
 
 // 當接收到來自 App 的封包時會執行此函式
 void onBlePacketReceived(const BcbpPacketV1* packet) {
-    Serial.printf("收到封包 - 指令: 0x%02X, 目標: %d, 動作: %d\n", 
-                  packet->command, packet->targetId, packet->action);
+    switch (packet->command) {
+        case CMD_BUTTON:
+            Serial.printf("Button %d %s\n", packet->targetId,
+                          packet->action == ACT_SHORT ? "DOWN" : "UP");
+            break;
+        case CMD_DIGITAL:
+            Serial.printf("Digital CH%d = %d\n", packet->targetId, packet->action);
+            break;
+        case CMD_ANALOG: {
+            // 16-bit value: action = high byte, sequence = low byte
+            uint16_t value = BcbpProtocol::getAnalogValue(packet);
+            Serial.printf("Analog CH%d = %d\n", packet->targetId, value);
+            break;
+        }
+        default:
+            Serial.printf("收到封包 - 指令: 0x%02X, 目標: %d, 動作: %d\n",
+                          packet->command, packet->targetId, packet->action);
+            break;
+    }
 }
 
 void setup() {

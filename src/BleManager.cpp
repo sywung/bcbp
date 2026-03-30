@@ -79,7 +79,7 @@ void BleManager::begin(const char* deviceName) {
     // Set up Scan Response Data
     NimBLEAdvertisementData scanResponseData;
     scanResponseData.setName(deviceName);
-    
+
     // Add Current Battery Level to Scan Response
     std::string batteryData((char*)&_batteryLevel, 1);
     scanResponseData.setServiceData(NimBLEUUID((uint16_t)0x180F), batteryData);

@@ -84,6 +84,14 @@ class BcbpProtocol {
 public:
     static const size_t PACKET_SIZE_V1 = 6;
 
+    /**
+     * Extract 16-bit analog value from a CMD_ANALOG packet.
+     * For ANALOG packets, `action` holds the high byte and `sequence` holds the low byte.
+     */
+    static uint16_t getAnalogValue(const BcbpPacketV1* packet) {
+        return ((uint16_t)packet->action << 8) | packet->sequence;
+    }
+
     static uint8_t calculateCRC8(const uint8_t* data, size_t len) {
         uint8_t crc = 0x00;
         for (size_t i = 0; i < len; i++) {
