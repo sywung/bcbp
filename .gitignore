@@ -48,3 +48,7 @@ __pycache__/
 *.a
 *.so
 
+# Arduino library packaging
+BCBP/
+BCBP-*.zip
+
