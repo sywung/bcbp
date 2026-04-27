@@ -106,6 +106,14 @@ bool BleManager::isConnected() {
     return _deviceConnected;
 }
 
+void BleManager::_sendPacket(BcbpPacketV1& packet) {
+    _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
+    uint8_t retries = 5;
+    while (!_pTxCharacteristic->notify() && retries--) {
+        delay(1);
+    }
+}
+
 void BleManager::sendButtonEvent(uint8_t targetId, ButtonAction action) {
     if (!_deviceConnected) return;
 
@@ -117,9 +125,7 @@ void BleManager::sendButtonEvent(uint8_t targetId, ButtonAction action) {
     packet.sequence = _sequence++;
     packet.crc8 = BcbpProtocol::calculateCRC8((uint8_t*)&packet, 5);
 
-    _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
-    _pTxCharacteristic->notify();
-    
+    _sendPacket(packet);
     BCBP_LOGF("[BLE] Sent Button Packet: ID=%d, ACT=%d, SEQ=%d\n", targetId, (uint8_t)action, packet.sequence);
 }
 
@@ -138,9 +144,7 @@ void BleManager::sendDigitalReport(uint8_t channel, uint8_t state) {
     packet.sequence = _sequence++;
     packet.crc8 = BcbpProtocol::calculateCRC8((uint8_t*)&packet, 5);
 
-    _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
-    _pTxCharacteristic->notify();
-    
+    _sendPacket(packet);
     BCBP_LOGF("[BLE] Sent DI Packet: CH=%d, STATE=%d, SEQ=%d\n", channel, state, packet.sequence);
 }
 
@@ -155,9 +159,7 @@ void BleManager::sendAnalogReport(uint8_t channel, uint16_t value) {
     packet.sequence = (uint8_t)(value & 0xFF); // Low byte (reusing sequence field)
     packet.crc8 = BcbpProtocol::calculateCRC8((uint8_t*)&packet, 5);
 
-    _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
-    _pTxCharacteristic->notify();
-    
+    _sendPacket(packet);
     BCBP_LOGF("[BLE] Sent AI Packet: CH=%d, VALUE=%d\n", channel, value);
 }
 
@@ -172,9 +174,7 @@ void BleManager::sendHapticFeedback(HapticPattern pattern, uint8_t intensity) {
     packet.sequence = _sequence++;
     packet.crc8 = BcbpProtocol::calculateCRC8((uint8_t*)&packet, 5);
 
-    _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
-    _pTxCharacteristic->notify();
-    
+    _sendPacket(packet);
     BCBP_LOGF("[BLE] Sent Haptic: PAT=%d, INT=%d\n", (uint8_t)pattern, intensity);
 }
 
@@ -189,9 +189,7 @@ void BleManager::sendSoundFeedback(SoundID soundId, uint8_t volume) {
     packet.sequence = _sequence++;
     packet.crc8 = BcbpProtocol::calculateCRC8((uint8_t*)&packet, 5);
 
-    _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
-    _pTxCharacteristic->notify();
-    
+    _sendPacket(packet);
     BCBP_LOGF("[BLE] Sent Sound: ID=%d, VOL=%d\n", (uint8_t)soundId, volume);
 }
 
@@ -206,9 +204,7 @@ void BleManager::sendCombinedFeedback(HapticPattern pattern, SoundID soundId) {
     packet.sequence = _sequence++;
     packet.crc8 = BcbpProtocol::calculateCRC8((uint8_t*)&packet, 5);
 
-    _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
-    _pTxCharacteristic->notify();
-    
+    _sendPacket(packet);
     BCBP_LOGF("[BLE] Sent Feedback: HAP=%d, SND=%d\n", (uint8_t)pattern, (uint8_t)soundId);
 }
 

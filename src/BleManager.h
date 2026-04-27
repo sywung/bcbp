@@ -80,6 +80,8 @@ private:
         void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override;
     };
     
+    void _sendPacket(BcbpPacketV1& packet);
+
     // Friend classes to allow access to private members/callbacks
     friend class ServerCallbacks;
     friend class CharacteristicCallbacks;
