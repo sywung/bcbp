@@ -2,7 +2,7 @@
   04_JoystickMotorControl.ino
   
   示範如何接收搖桿指令 (CMD_JOYSTICK) 並控制兩個直流馬達。
-  搖桿數據範圍為 -100 到 +100。
+  搖桿數據範圍為 -127 到 +127。
   程式將根據 Y 軸計算前進/後退，根據 X 軸計算左右轉向。
 */
 
@@ -50,8 +50,8 @@ void onBlePacket(const BcbpPacketV1* packet) {
 
         // 簡易的差速驅動演算法
         // 將 -100~100 對應到 PWM 的 -255~255
-        int throttle = map(y, -100, 100, -255, 255);
-        int steering = map(x, -100, 100, -255, 255);
+        int throttle = map(y, -127, 127, -255, 255);
+        int steering = map(x, -127, 127, -255, 255);
 
         int leftSpeed = throttle + steering;
         int rightSpeed = throttle - steering;

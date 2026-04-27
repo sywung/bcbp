@@ -14,11 +14,9 @@ enum BcbpVersion : uint8_t {
 };
 
 enum BcbpCommand : uint8_t {
-    // --- App -> Device (RX) ---
+    // --- App <-> Device (RX) ---
     CMD_BUTTON   = 0x01,
     CMD_JOYSTICK = 0x02,
-    CMD_DIGITAL  = 0x11,
-    CMD_ANALOG   = 0x12,
 
     // --- Device -> App (TX) ---
     CMD_HAPTIC   = 0x21,   // Vibration feedback

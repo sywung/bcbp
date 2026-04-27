@@ -217,16 +217,26 @@ BleManager::getInstance().setBatteryLevel(95);
 | 4 | Sequence | 封包序號 (遞增計數器) |
 | 5 | CRC8 | 數據完整性檢查 |
 
-#### 指令方向慣例 (Direction Convention)
+#### CMD_ANALOG 特殊封包格式
 
-指令數值範圍用於區分封包方向：
+`CMD_ANALOG` 的 Byte 3 與 Byte 4 共同承載 16-bit 類比數值，不遵循通用欄位定義：
 
-| 範圍 | 方向 | GATT 特徵值 (Characteristic) |
-|------|------|---------------------|
-| `0x01 ~ 0x1F` | App → Device | RX (Write) |
-| `0x21 ~ 0x3F` | Device → App | TX (Notify) |
+| Byte 0 | Byte 1 | Byte 2 | Byte 3 | Byte 4 | Byte 5 |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| Version | `0x12` | Channel | Value High | Value Low | CRC8 |
 
-> App 收到不支援的 Command（尤其在 `0x21~0x3F` 範圍內）應靜默忽略，不得因此中斷連線。
+- Value 範圍：`0x0000 ~ 0xFFFF`（0–65535）
+- 讀取數值請使用 `BcbpProtocol::getAnalogValue(packet)`，回傳 `uint16_t`
+
+```cpp
+void onBlePacket(const BcbpPacketV1* packet) {
+    if (packet->command == CMD_ANALOG) {
+        uint8_t channel = packet->targetId;
+        uint16_t value  = BcbpProtocol::getAnalogValue(packet);
+        Serial.printf("Analog Ch%d = %d\n", channel, value);
+    }
+}
+```
 
 ## 7. 列舉型別定義 (Enum Definitions - v1)
 
@@ -234,13 +244,13 @@ BleManager::getInstance().setBatteryLevel(95);
 
 ```cpp
 enum BcbpCommand : uint8_t {
-  // --- App → Device ---
+  // --- App <-> Device ---
   CMD_BUTTON   = 0x01,  // 按鈕事件
   CMD_JOYSTICK = 0x02,  // 搖桿座標
   CMD_DIGITAL  = 0x11,  // 數位狀態報告
   CMD_ANALOG   = 0x12,  // 類比數值報告
 
-  // --- Device → App ---
+  // --- Device -> App ---
   CMD_HAPTIC   = 0x21,  // 觸覺震動回饋
   CMD_SOUND    = 0x22,  // 聲音回饋
   CMD_FEEDBACK = 0x23,  // 同時觸發震動與聲音
