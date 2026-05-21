@@ -19,6 +19,8 @@ enum BcbpCommand : uint8_t {
     CMD_JOYSTICK = 0x02,
 
     // --- Device -> App (TX) ---
+    CMD_DIGITAL  = 0x11,   // 數位狀態報告
+    CMD_ANALOG   = 0x12,   // 類比數值報告
     CMD_HAPTIC   = 0x21,   // Vibration feedback
     CMD_SOUND    = 0x22,   // Sound feedback
     CMD_FEEDBACK = 0x23    // Both haptic and sound
