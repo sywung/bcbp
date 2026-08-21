@@ -28,6 +28,7 @@ class BleManager {
 public:
     static BleManager& getInstance();
     void begin(const char* deviceName);
+    void setDeviceName(const char* deviceName);
     void update();
     
     // Configuration
@@ -39,6 +40,10 @@ public:
     // Callback setters
     void setConnectionCallback(ConnectionCallback cb);
     void setPacketCallback(PacketCallback cb);
+
+    // Send a caller-built BCBP v1 packet through the TX notification channel.
+    // The packet must already contain its CRC8.
+    void sendPacket(BcbpPacketV1& packet);
 
     void sendButtonEvent(uint8_t targetId, ButtonAction action);
     void sendDigitalReport(uint8_t channel, bool state);

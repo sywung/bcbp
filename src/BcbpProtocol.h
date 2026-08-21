@@ -23,7 +23,19 @@ enum BcbpCommand : uint8_t {
     CMD_ANALOG   = 0x12,   // 類比數值報告
     CMD_HAPTIC   = 0x21,   // Vibration feedback
     CMD_SOUND    = 0x22,   // Sound feedback
-    CMD_FEEDBACK = 0x23    // Both haptic and sound
+    CMD_FEEDBACK = 0x23,   // Both haptic and sound
+
+    // Matrix Clock time synchronization transaction.
+    CMD_TIME_SYNC_LO = 0x30,
+    CMD_TIME_SYNC_HI = 0x31,
+    CMD_TIME_SYNC_COMMIT = 0x32,
+    CMD_TIME_SYNC_ACK = 0x33,
+
+    // Matrix Clock settings.
+    CMD_BLE_NAME_BEGIN = 0x48,
+    CMD_BLE_NAME_DATA = 0x49,
+    CMD_BLE_NAME_COMMIT = 0x4A,
+    CMD_SETTINGS_ACK = 0x4D
 };
 
 enum ButtonAction : uint8_t {

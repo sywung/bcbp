@@ -76,7 +76,8 @@ void BleManager::begin(const char* deviceName) {
     NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(_serviceUUID);
     
-    // Set up Scan Response Data
+    // The name is in scan response data so the 128-bit service UUID remains
+    // in the primary advertisement. Apps must read advName from scan results.
     NimBLEAdvertisementData scanResponseData;
     scanResponseData.setName(deviceName);
 
@@ -90,6 +91,18 @@ void BleManager::begin(const char* deviceName) {
     BCBP_LOGF("[BLE] Advertising started as %s (Initial Battery: %d%%)\n", deviceName, _batteryLevel);
 }
 
+void BleManager::setDeviceName(const char* deviceName) {
+    if (deviceName == nullptr || deviceName[0] == '\0') return;
+    NimBLEDevice::setDeviceName(deviceName);
+    NimBLEDevice::getAdvertising()->stop();
+    NimBLEAdvertisementData scanResponseData;
+    scanResponseData.setName(deviceName);
+    std::string batteryData((char*)&_batteryLevel, 1);
+    scanResponseData.setServiceData(NimBLEUUID((uint16_t)0x180F), batteryData);
+    NimBLEDevice::getAdvertising()->setScanResponseData(scanResponseData);
+    NimBLEDevice::startAdvertising();
+}
+
 void BleManager::update() {
     // Optional maintenance
 }
@@ -100,6 +113,11 @@ void BleManager::setConnectionCallback(ConnectionCallback cb) {
 
 void BleManager::setPacketCallback(PacketCallback cb) {
     _packetCallback = cb;
+}
+
+void BleManager::sendPacket(BcbpPacketV1& packet) {
+    if (!_deviceConnected) return;
+    _sendPacket(packet);
 }
 
 bool BleManager::isConnected() {
