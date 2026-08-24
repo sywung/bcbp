@@ -18,13 +18,15 @@ BleManager::BleManager() :
     _pRxCharacteristic(nullptr), 
     _pBatteryCharacteristic(nullptr), 
     _deviceConnected(false), 
+    _negotiatedMtu(0),
     _sequence(0), 
     _batteryLevel(100), 
     _serviceUUID(SERVICE_UUID),
     _rxUUID(RX_CHARACTERISTIC_UUID),
     _txUUID(TX_CHARACTERISTIC_UUID),
     _connectionCallback(nullptr), 
-    _packetCallback(nullptr) {}
+    _packetCallback(nullptr),
+    _packetV2Callback(nullptr) {}
 
 void BleManager::setCustomUUIDs(const char* serviceUUID, const char* rxUUID, const char* txUUID) {
     if (serviceUUID) _serviceUUID = serviceUUID;
@@ -46,6 +48,7 @@ void BleManager::setTxUUID(const char* uuid) {
 
 void BleManager::begin(const char* deviceName) {
     NimBLEDevice::init(deviceName);
+    NimBLEDevice::setMTU(517);
     _pServer = NimBLEDevice::createServer();
     _pServer->setCallbacks(new ServerCallbacks());
 
@@ -115,13 +118,44 @@ void BleManager::setPacketCallback(PacketCallback cb) {
     _packetCallback = cb;
 }
 
+void BleManager::setPacketV2Callback(PacketV2Callback cb) {
+    _packetV2Callback = cb;
+}
+
 void BleManager::sendPacket(BcbpPacketV1& packet) {
     if (!_deviceConnected) return;
     _sendPacket(packet);
 }
 
+void BleManager::sendPacketV2(uint8_t command, uint8_t sequence,
+                              const uint8_t* payload, uint8_t length) {
+    if (!_deviceConnected) return;
+    if (payload == nullptr) length = 0;
+
+    uint8_t packet[BcbpProtocol::OVERHEAD_V2 + 255];
+    packet[0] = BCBP_V2;
+    packet[1] = command;
+    packet[2] = sequence;
+    packet[3] = length;
+    if (length > 0) {
+        memcpy(packet + BcbpProtocol::HEADER_SIZE_V2, payload, length);
+    }
+    const size_t packetLength = BcbpProtocol::OVERHEAD_V2 + length;
+    packet[packetLength - 1] = BcbpProtocol::calculateCRC8(packet, packetLength - 1);
+
+    _pTxCharacteristic->setValue(packet, packetLength);
+    uint8_t retries = 5;
+    while (!_pTxCharacteristic->notify() && retries--) {
+        delay(1);
+    }
+}
+
 bool BleManager::isConnected() {
     return _deviceConnected;
+}
+
+uint16_t BleManager::getNegotiatedMtu() const {
+    return _negotiatedMtu;
 }
 
 void BleManager::_sendPacket(BcbpPacketV1& packet) {
@@ -249,6 +283,7 @@ void BleManager::setBatteryLevel(uint8_t level) {
 
 void BleManager::ServerCallbacks::onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) {
     BleManager::getInstance()._deviceConnected = true;
+    BleManager::getInstance()._negotiatedMtu = connInfo.getMTU();
     BCBP_LOG("[BLE] Client connected");
     if (BleManager::getInstance()._connectionCallback) {
         BleManager::getInstance()._connectionCallback(true);
@@ -257,6 +292,7 @@ void BleManager::ServerCallbacks::onConnect(NimBLEServer* pServer, NimBLEConnInf
 
 void BleManager::ServerCallbacks::onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) {
     BleManager::getInstance()._deviceConnected = false;
+    BleManager::getInstance()._negotiatedMtu = 0;
     BCBP_LOG("[BLE] Client disconnected");
     if (BleManager::getInstance()._connectionCallback) {
         BleManager::getInstance()._connectionCallback(false);
@@ -265,9 +301,16 @@ void BleManager::ServerCallbacks::onDisconnect(NimBLEServer* pServer, NimBLEConn
     BCBP_LOG("[BLE] Advertising restarted");
 }
 
+void BleManager::ServerCallbacks::onMTUChange(uint16_t MTU, NimBLEConnInfo& connInfo) {
+    BleManager::getInstance()._negotiatedMtu = MTU;
+}
+
 void BleManager::CharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) {
     std::string value = pCharacteristic->getValue();
-    if (value.length() == BcbpProtocol::PACKET_SIZE_V1) {
+    if (value.length() == 0) {
+        BCBP_LOGF("[BLE] Received data length: %d\n", value.length());
+    } else if (((const uint8_t*)value.data())[0] == BCBP_V1 &&
+               value.length() == BcbpProtocol::PACKET_SIZE_V1) {
         const uint8_t* data = (const uint8_t*)value.data();
         if (BcbpProtocol::validatePacket(data, value.length())) {
             BcbpPacketV1* packet = (BcbpPacketV1*)data;
@@ -276,6 +319,17 @@ void BleManager::CharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharact
             }
         } else {
             BCBP_LOG("[BLE] Received invalid BCBP packet");
+        }
+    } else if (((const uint8_t*)value.data())[0] == BCBP_V2) {
+        const uint8_t* data = (const uint8_t*)value.data();
+        if (BcbpProtocol::validatePacketV2(data, value.length())) {
+            if (BleManager::getInstance()._packetV2Callback) {
+                BleManager::getInstance()._packetV2Callback(
+                    data[1], data[2], data + BcbpProtocol::HEADER_SIZE_V2,
+                    data[3]);
+            }
+        } else {
+            BCBP_LOG("[BLE] Received invalid BCBP v2 packet");
         }
     } else {
         BCBP_LOGF("[BLE] Received data length: %d\n", value.length());

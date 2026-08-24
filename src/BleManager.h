@@ -23,6 +23,9 @@
 // Callback types
 typedef std::function<void(bool connected)> ConnectionCallback;
 typedef std::function<void(const BcbpPacketV1* packet)> PacketCallback;
+typedef std::function<void(uint8_t command, uint8_t sequence,
+                           const uint8_t* payload, uint8_t length)>
+    PacketV2Callback;
 
 class BleManager {
 public:
@@ -40,10 +43,13 @@ public:
     // Callback setters
     void setConnectionCallback(ConnectionCallback cb);
     void setPacketCallback(PacketCallback cb);
+    void setPacketV2Callback(PacketV2Callback cb);
 
     // Send a caller-built BCBP v1 packet through the TX notification channel.
     // The packet must already contain its CRC8.
     void sendPacket(BcbpPacketV1& packet);
+    void sendPacketV2(uint8_t command, uint8_t sequence,
+                      const uint8_t* payload, uint8_t length);
 
     void sendButtonEvent(uint8_t targetId, ButtonAction action);
     void sendDigitalReport(uint8_t channel, bool state);
@@ -57,6 +63,7 @@ public:
 
     void setBatteryLevel(uint8_t level);
     bool isConnected();
+    uint16_t getNegotiatedMtu() const;
 
 private:
     BleManager();
@@ -66,6 +73,8 @@ private:
     NimBLECharacteristic* _pRxCharacteristic;
     NimBLECharacteristic* _pBatteryCharacteristic;
     bool _deviceConnected;
+    // Written by NimBLE callbacks and read from other tasks; keep the value observable.
+    volatile uint16_t _negotiatedMtu;
     uint8_t _sequence;
     uint8_t _batteryLevel;
 
@@ -75,10 +84,12 @@ private:
 
     ConnectionCallback _connectionCallback;
     PacketCallback _packetCallback;
+    PacketV2Callback _packetV2Callback;
 
     class ServerCallbacks : public NimBLEServerCallbacks {
         void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override;
         void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override;
+        void onMTUChange(uint16_t MTU, NimBLEConnInfo& connInfo) override;
     };
 
     class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {

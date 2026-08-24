@@ -95,6 +95,10 @@ struct BcbpPacketV1 {
 class BcbpProtocol {
 public:
     static const size_t PACKET_SIZE_V1 = 6;
+    // v2 carries its payload length in the header, so callers must validate
+    // both the declared and actual packet sizes before accessing the payload.
+    static const size_t HEADER_SIZE_V2 = 4;
+    static const size_t OVERHEAD_V2 = 5;
 
     /**
      * Extract 16-bit analog value from a CMD_ANALOG packet.
@@ -127,6 +131,16 @@ public:
         // but for strictness we should probably always check if it's not explicitly disabled.
         uint8_t calculatedCrc = calculateCRC8(data, PACKET_SIZE_V1 - 1);
         return (data[PACKET_SIZE_V1 - 1] == calculatedCrc);
+    }
+
+    static bool validatePacketV2(const uint8_t* data, size_t len) {
+        if (len < OVERHEAD_V2) return false;
+        if (data == nullptr) return false;
+        if (data[0] != BCBP_V2) return false;
+        if (len != OVERHEAD_V2 + data[3]) return false;
+
+        uint8_t calculatedCrc = calculateCRC8(data, len - 1);
+        return (data[len - 1] == calculatedCrc);
     }
 };
 
