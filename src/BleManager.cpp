@@ -29,7 +29,17 @@ BleManager::BleManager() :
     _txUUID(TX_CHARACTERISTIC_UUID),
     _connectionCallback(nullptr), 
     _packetCallback(nullptr),
-    _packetV2Callback(nullptr) {}
+    _packetV2Callback(nullptr),
+    _blobCallback(nullptr),
+    _blobActive(false),
+    _blobStreamId(0),
+    _blobType(0),
+    _blobSequence(0),
+    _lastBlobSequence(0),
+    _blobTotalLength(0),
+    _blobReceived(0),
+    _blobBuffer{},
+    _blobCoverage{} {}
 
 void BleManager::setCustomUUIDs(const char* serviceUUID, const char* rxUUID, const char* txUUID) {
     if (serviceUUID) _serviceUUID = serviceUUID;
@@ -123,6 +133,120 @@ void BleManager::setPacketCallback(PacketCallback cb) {
 
 void BleManager::setPacketV2Callback(PacketV2Callback cb) {
     _packetV2Callback = cb;
+}
+
+void BleManager::setBlobCallback(BlobCallback cb) {
+    _blobCallback = cb;
+}
+
+uint8_t BleManager::lastBlobSequence() const {
+    return _lastBlobSequence;
+}
+
+void BleManager::_sendBlobAck(uint8_t streamId, uint8_t result,
+                              uint32_t received, uint8_t sequence) {
+    uint8_t payload[6] = {
+        streamId, result,
+        static_cast<uint8_t>(received),
+        static_cast<uint8_t>(received >> 8),
+        static_cast<uint8_t>(received >> 16),
+        static_cast<uint8_t>(received >> 24)
+    };
+    sendPacketV2(CMD_BLOB_ACK, sequence, payload, sizeof(payload));
+}
+
+void BleManager::_handleBlobPacket(uint8_t command, uint8_t sequence,
+                                   const uint8_t* payload, uint8_t length) {
+    const uint8_t streamId = (payload != nullptr && length > 0) ? payload[0] : 0;
+
+    if (command == CMD_BLOB_BEGIN) {
+        if (payload == nullptr || length != 6) {
+            _sendBlobAck(streamId, BCBP_BLOB_TRANSACTION_ERROR, 0, sequence);
+            return;
+        }
+        if (_blobActive) {
+            _sendBlobAck(streamId, BCBP_BLOB_TRANSACTION_ERROR,
+                         _blobReceived, sequence);
+            return;
+        }
+        const uint32_t totalLength = static_cast<uint32_t>(payload[1]) |
+            (static_cast<uint32_t>(payload[2]) << 8) |
+            (static_cast<uint32_t>(payload[3]) << 16) |
+            (static_cast<uint32_t>(payload[4]) << 24);
+        if (totalLength > BCBP_BLOB_MAX_LENGTH) {
+            _blobActive = false;
+            _sendBlobAck(streamId, BCBP_BLOB_TOO_LARGE, 0, sequence);
+            return;
+        }
+        _blobActive = true;
+        _blobStreamId = streamId;
+        _blobType = payload[5];
+        _blobSequence = sequence;
+        _lastBlobSequence = sequence;
+        _blobTotalLength = totalLength;
+        _blobReceived = 0;
+        memset(_blobCoverage, 0, sizeof(_blobCoverage));
+        _sendBlobAck(streamId, BCBP_BLOB_OK, 0, sequence);
+        return;
+    }
+
+    if (command == CMD_BLOB_DATA) {
+        if (payload == nullptr || length < 5 || !_blobActive ||
+            sequence != _blobSequence || streamId != _blobStreamId) {
+            _sendBlobAck(streamId, BCBP_BLOB_TRANSACTION_ERROR,
+                         _blobActive ? _blobReceived : 0, sequence);
+            return;
+        }
+        const uint32_t offset = static_cast<uint32_t>(payload[1]) |
+            (static_cast<uint32_t>(payload[2]) << 8) |
+            (static_cast<uint32_t>(payload[3]) << 16) |
+            (static_cast<uint32_t>(payload[4]) << 24);
+        const uint32_t dataLength = length - 5;
+        if (offset > _blobTotalLength || dataLength > _blobTotalLength - offset) {
+            _sendBlobAck(streamId, BCBP_BLOB_TRANSACTION_ERROR,
+                         _blobReceived, sequence);
+            return;
+        }
+        for (uint32_t i = 0; i < dataLength; ++i) {
+            const uint32_t index = offset + i;
+            const uint8_t mask = static_cast<uint8_t>(1U << (index & 7));
+            if ((_blobCoverage[index >> 3] & mask) == 0) {
+                _blobCoverage[index >> 3] |= mask;
+                ++_blobReceived;
+            }
+            _blobBuffer[index] = payload[5 + i];
+        }
+        return;
+    }
+
+    if (command == CMD_BLOB_END) {
+        if (payload == nullptr || length != 5 || !_blobActive ||
+            sequence != _blobSequence || streamId != _blobStreamId) {
+            _sendBlobAck(streamId, BCBP_BLOB_TRANSACTION_ERROR,
+                         _blobActive ? _blobReceived : 0, sequence);
+            return;
+        }
+        const uint32_t expected = static_cast<uint32_t>(payload[1]) |
+            (static_cast<uint32_t>(payload[2]) << 8) |
+            (static_cast<uint32_t>(payload[3]) << 16) |
+            (static_cast<uint32_t>(payload[4]) << 24);
+        const uint32_t actual = BcbpProtocol::calculateCRC32(
+            _blobBuffer, _blobTotalLength);
+        const bool complete = _blobReceived == _blobTotalLength;
+        if (!complete || actual != expected) {
+            _sendBlobAck(streamId, BCBP_BLOB_CRC_OR_INCOMPLETE,
+                         _blobReceived, sequence);
+            _blobActive = false;
+            return;
+        }
+        _sendBlobAck(streamId, BCBP_BLOB_OK, _blobReceived, sequence);
+        if (_blobCallback) {
+            // This is the NimBLE host task. The callback must only copy/defer;
+            // callers must not perform slow work or send packets here.
+            _blobCallback(_blobStreamId, _blobType, _blobBuffer, _blobTotalLength);
+        }
+        _blobActive = false;
+    }
 }
 
 void BleManager::sendPacket(BcbpPacketV1& packet) {
@@ -398,6 +522,7 @@ void BleManager::ServerCallbacks::onConnect(NimBLEServer* pServer, NimBLEConnInf
 void BleManager::ServerCallbacks::onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) {
     BleManager::getInstance()._deviceConnected = false;
     BleManager::getInstance()._negotiatedMtu = 0;
+    BleManager::getInstance()._blobActive = false;
     BCBP_LOG("[BLE] Client disconnected");
     if (BleManager::getInstance()._connectionCallback) {
         BleManager::getInstance()._connectionCallback(false);
@@ -428,8 +553,14 @@ void BleManager::CharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharact
     } else if (((const uint8_t*)value.data())[0] == BCBP_V2) {
         const uint8_t* data = (const uint8_t*)value.data();
         if (BcbpProtocol::validatePacketV2(data, value.length())) {
-            if (BleManager::getInstance()._packetV2Callback) {
-                BleManager::getInstance()._packetV2Callback(
+            BleManager& manager = BleManager::getInstance();
+            if (data[1] == CMD_BLOB_BEGIN || data[1] == CMD_BLOB_DATA ||
+                data[1] == CMD_BLOB_END) {
+                manager._handleBlobPacket(
+                    data[1], data[2], data + BcbpProtocol::HEADER_SIZE_V2,
+                    data[3]);
+            } else if (manager._packetV2Callback) {
+                manager._packetV2Callback(
                     data[1], data[2], data + BcbpProtocol::HEADER_SIZE_V2,
                     data[3]);
             }

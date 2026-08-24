@@ -26,6 +26,8 @@ typedef std::function<void(const BcbpPacketV1* packet)> PacketCallback;
 typedef std::function<void(uint8_t command, uint8_t sequence,
                            const uint8_t* payload, uint8_t length)>
     PacketV2Callback;
+typedef std::function<void(uint8_t streamId, uint8_t type,
+                           const uint8_t* data, size_t length)> BlobCallback;
 
 class BleManager {
 public:
@@ -44,6 +46,10 @@ public:
     void setConnectionCallback(ConnectionCallback cb);
     void setPacketCallback(PacketCallback cb);
     void setPacketV2Callback(PacketV2Callback cb);
+    // Called in the BLE host task. The callback must not do slow work or send
+    // packets; copy the data and defer processing to loop().
+    void setBlobCallback(BlobCallback cb);
+    uint8_t lastBlobSequence() const;
 
     // Send a caller-built BCBP v1 packet through the TX notification channel.
     // The packet must already contain its CRC8.
@@ -98,6 +104,17 @@ private:
     ConnectionCallback _connectionCallback;
     PacketCallback _packetCallback;
     PacketV2Callback _packetV2Callback;
+    BlobCallback _blobCallback;
+
+    bool _blobActive;
+    uint8_t _blobStreamId;
+    uint8_t _blobType;
+    uint8_t _blobSequence;
+    uint8_t _lastBlobSequence;
+    uint32_t _blobTotalLength;
+    uint32_t _blobReceived;
+    uint8_t _blobBuffer[BCBP_BLOB_MAX_LENGTH];
+    uint8_t _blobCoverage[BCBP_BLOB_MAX_LENGTH / 8];
 
     class ServerCallbacks : public NimBLEServerCallbacks {
         void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override;
@@ -110,6 +127,10 @@ private:
     };
     
     void _sendPacket(BcbpPacketV1& packet);
+    void _handleBlobPacket(uint8_t command, uint8_t sequence,
+                           const uint8_t* payload, uint8_t length);
+    void _sendBlobAck(uint8_t streamId, uint8_t result, uint32_t received,
+                      uint8_t sequence);
 
     // Friend classes to allow access to private members/callbacks
     friend class ServerCallbacks;

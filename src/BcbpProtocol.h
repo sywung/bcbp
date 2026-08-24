@@ -45,6 +45,18 @@ enum BcbpCommand : uint8_t {
     CMD_STATUS_QUERY = 0x64
 };
 
+// The receiver allocates this buffer once. Do not raise this without checking
+// the target's free heap and the size of every receiver-side buffer.
+static constexpr size_t BCBP_BLOB_MAX_LENGTH = 512;
+
+enum BcbpBlobResult : uint8_t {
+    BCBP_BLOB_OK = 0,
+    BCBP_BLOB_TOO_LARGE = 1,
+    BCBP_BLOB_CRC_OR_INCOMPLETE = 2,
+    BCBP_BLOB_TRANSACTION_ERROR = 3,
+    BCBP_BLOB_COMMAND_ERROR = 4
+};
+
 enum ButtonAction : uint8_t {
     ACT_RELEASE = 0x00,
     ACT_SHORT   = 0x01,
