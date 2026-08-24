@@ -65,6 +65,12 @@ public:
     bool isConnected();
     uint16_t getNegotiatedMtu() const;
 
+    // Permanent notify health counters; retain for DEC-022 P2 troubleshooting.
+    uint32_t notifyCalls() const;
+    uint32_t notifyRetries() const;
+    uint32_t notifyFailures() const;
+    void resetNotifyStats();
+
 private:
     BleManager();
     
@@ -75,6 +81,11 @@ private:
     bool _deviceConnected;
     // Written by NimBLE callbacks and read from other tasks; keep the value observable.
     volatile uint16_t _negotiatedMtu;
+    // Written by the BLE task and read from other tasks; integer-only notify
+    // health counters retained for DEC-022 P2 troubleshooting.
+    volatile uint32_t _notifyCalls;
+    volatile uint32_t _notifyRetries;
+    volatile uint32_t _notifyFailures;
     uint8_t _sequence;
     uint8_t _batteryLevel;
 

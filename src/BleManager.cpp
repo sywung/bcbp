@@ -19,6 +19,9 @@ BleManager::BleManager() :
     _pBatteryCharacteristic(nullptr), 
     _deviceConnected(false), 
     _negotiatedMtu(0),
+    _notifyCalls(0),
+    _notifyRetries(0),
+    _notifyFailures(0),
     _sequence(0), 
     _batteryLevel(100), 
     _serviceUUID(SERVICE_UUID),
@@ -143,9 +146,13 @@ void BleManager::sendPacketV2(uint8_t command, uint8_t sequence,
     const size_t packetLength = BcbpProtocol::OVERHEAD_V2 + length;
     packet[packetLength - 1] = BcbpProtocol::calculateCRC8(packet, packetLength - 1);
 
+    // Same overwrite race as _sendPacket() — see the comment there (BUG-008).
+    // This path matters most for DEC-022 P2: a BLOB stream is a burst by
+    // definition, so the no-argument notify() would lose all but the last
+    // chunks. setValue() stays for GATT reads.
     _pTxCharacteristic->setValue(packet, packetLength);
     uint8_t retries = 5;
-    while (!_pTxCharacteristic->notify() && retries--) {
+    while (!_pTxCharacteristic->notify(packet, packetLength) && retries--) {
         delay(1);
     }
 }
@@ -158,11 +165,57 @@ uint16_t BleManager::getNegotiatedMtu() const {
     return _negotiatedMtu;
 }
 
+uint32_t BleManager::notifyCalls() const {
+    return _notifyCalls;
+}
+
+uint32_t BleManager::notifyRetries() const {
+    return _notifyRetries;
+}
+
+uint32_t BleManager::notifyFailures() const {
+    return _notifyFailures;
+}
+
+void BleManager::resetNotifyStats() {
+    _notifyCalls = 0;
+    _notifyRetries = 0;
+    _notifyFailures = 0;
+}
+
 void BleManager::_sendPacket(BcbpPacketV1& packet) {
+    // Notify the explicit payload, rather than the characteristic's stored value.
+    // The no-argument notify() sends whatever value the characteristic holds at
+    // the time the BLE stack processes the request. During a burst, the next
+    // setValue() can overwrite that shared value before the previous request is
+    // actually transmitted, causing the receiver to see only the last packets,
+    // often repeatedly. The payload overload copies this packet when notify() is
+    // called, so each request retains the bytes intended for that packet.
+    //
+    // Keep setValue() because the current value must remain available to GATT
+    // reads; it is not a substitute for the payload passed to notify(). Also,
+    // notify() returning true only means that the request was accepted locally,
+    // not that the client received it. Consequently, increasing the retry count
+    // cannot fix this overwrite race: BUG-008 showed zero retries and failures
+    // even while packets were being lost. The longer burst time after this fix
+    // is the cost of copying each payload into its own mbuf, replacing the old
+    // no-copy path; it is not caused by an added delay.
+    //
+    // These counters are intentionally permanent notify health metrics. They
+    // perform integer increments only in this hot path and remain useful for
+    // DEC-022 P2 troubleshooting.
+    _notifyCalls++;
     _pTxCharacteristic->setValue((uint8_t*)&packet, sizeof(packet));
     uint8_t retries = 5;
-    while (!_pTxCharacteristic->notify() && retries--) {
+    bool notified = _pTxCharacteristic->notify((const uint8_t*)&packet, sizeof(packet));
+    while (!notified && retries > 0) {
+        --retries;
+        ++_notifyRetries;
         delay(1);
+        notified = _pTxCharacteristic->notify((const uint8_t*)&packet, sizeof(packet));
+    }
+    if (!notified) {
+        ++_notifyFailures;
     }
 }
 
