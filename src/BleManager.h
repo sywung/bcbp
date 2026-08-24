@@ -50,6 +50,8 @@ public:
     void sendPacket(BcbpPacketV1& packet);
     void sendPacketV2(uint8_t command, uint8_t sequence,
                       const uint8_t* payload, uint8_t length);
+    bool sendBlob(uint8_t streamId, uint8_t sequence, uint8_t type,
+                  const uint8_t* data, size_t length);
 
     void sendButtonEvent(uint8_t targetId, ButtonAction action);
     void sendDigitalReport(uint8_t channel, bool state);

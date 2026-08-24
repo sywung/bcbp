@@ -35,7 +35,14 @@ enum BcbpCommand : uint8_t {
     CMD_BLE_NAME_BEGIN = 0x48,
     CMD_BLE_NAME_DATA = 0x49,
     CMD_BLE_NAME_COMMIT = 0x4A,
-    CMD_SETTINGS_ACK = 0x4D
+    CMD_SETTINGS_ACK = 0x4D,
+
+    // DEC-022 blob transport and read-only status query.
+    CMD_BLOB_BEGIN = 0x60,
+    CMD_BLOB_DATA = 0x61,
+    CMD_BLOB_END = 0x62,
+    CMD_BLOB_ACK = 0x63,
+    CMD_STATUS_QUERY = 0x64
 };
 
 enum ButtonAction : uint8_t {
@@ -121,6 +128,18 @@ public:
             }
         }
         return crc;
+    }
+
+    // CRC-32/IEEE, reflected polynomial, without a lookup table to save flash.
+    static uint32_t calculateCRC32(const uint8_t* data, size_t len) {
+        uint32_t crc = 0xFFFFFFFF;
+        for (size_t i = 0; i < len; i++) {
+            crc ^= data[i];
+            for (uint8_t bit = 0; bit < 8; bit++) {
+                crc = (crc & 1) ? ((crc >> 1) ^ 0xEDB88320) : (crc >> 1);
+            }
+        }
+        return ~crc;
     }
 
     static bool validatePacket(const uint8_t* data, size_t len) {

@@ -157,6 +157,58 @@ void BleManager::sendPacketV2(uint8_t command, uint8_t sequence,
     }
 }
 
+bool BleManager::sendBlob(uint8_t streamId, uint8_t sequence, uint8_t type,
+                          const uint8_t* data, size_t length) {
+    if (!_deviceConnected || (data == nullptr && length != 0)) return false;
+
+    const uint16_t mtu = getNegotiatedMtu();
+    // A v2 packet has a one-byte length field. The 250-byte data cap comes
+    // from that field, not from the negotiated MTU. Calculate the other cap
+    // dynamically because ATT payload capacity changes with the MTU.
+    // The UINT32_MAX check is for portability; size_t is 32-bit on ESP32,
+    // so this condition cannot occur on that target.
+    if (mtu <= 13 || length > UINT32_MAX) return false;
+    const size_t chunkSize = min(static_cast<size_t>(mtu - 13), size_t(250));
+
+    // The caller supplies the sequence so the receiver can associate every
+    // response with its query and discard stale packets. For a blob, a stale
+    // packet can be worse than for a single packet: its wrong offset can
+    // silently corrupt the reassembled result.
+    uint8_t payload[6];
+    payload[0] = streamId;
+    const uint32_t totalLength = static_cast<uint32_t>(length);
+    payload[1] = static_cast<uint8_t>(totalLength);
+    payload[2] = static_cast<uint8_t>(totalLength >> 8);
+    payload[3] = static_cast<uint8_t>(totalLength >> 16);
+    payload[4] = static_cast<uint8_t>(totalLength >> 24);
+    payload[5] = type;
+    sendPacketV2(CMD_BLOB_BEGIN, sequence, payload, sizeof(payload));
+
+    uint8_t dataPayload[255];
+    for (size_t offset = 0; offset < length; offset += chunkSize) {
+        const size_t dataLength = min(chunkSize, length - offset);
+        dataPayload[0] = streamId;
+        dataPayload[1] = static_cast<uint8_t>(offset);
+        dataPayload[2] = static_cast<uint8_t>(offset >> 8);
+        dataPayload[3] = static_cast<uint8_t>(offset >> 16);
+        dataPayload[4] = static_cast<uint8_t>(offset >> 24);
+        memcpy(dataPayload + 5, data + offset, dataLength);
+        // The offset lets the receiver identify a missing BLE packet and
+        // locate the corresponding bytes (BUG-008, protocol section 9).
+        sendPacketV2(CMD_BLOB_DATA, sequence, dataPayload,
+                     static_cast<uint8_t>(dataLength + 5));
+    }
+
+    const uint32_t crc = BcbpProtocol::calculateCRC32(data, length);
+    payload[0] = streamId;
+    payload[1] = static_cast<uint8_t>(crc);
+    payload[2] = static_cast<uint8_t>(crc >> 8);
+    payload[3] = static_cast<uint8_t>(crc >> 16);
+    payload[4] = static_cast<uint8_t>(crc >> 24);
+    sendPacketV2(CMD_BLOB_END, sequence, payload, 5);
+    return true;
+}
+
 bool BleManager::isConnected() {
     return _deviceConnected;
 }
