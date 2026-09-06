@@ -25,24 +25,39 @@ enum BcbpCommand : uint8_t {
     CMD_SOUND    = 0x22,   // Sound feedback
     CMD_FEEDBACK = 0x23,   // Both haptic and sound
 
-    // Matrix Clock time synchronization transaction.
-    CMD_TIME_SYNC_LO = 0x30,
-    CMD_TIME_SYNC_HI = 0x31,
-    CMD_TIME_SYNC_COMMIT = 0x32,
-    CMD_TIME_SYNC_ACK = 0x33,
-
-    // Matrix Clock settings.
-    CMD_BLE_NAME_BEGIN = 0x48,
-    CMD_BLE_NAME_DATA = 0x49,
-    CMD_BLE_NAME_COMMIT = 0x4A,
-    CMD_SETTINGS_ACK = 0x4D,
-
-    // DEC-022 blob transport and read-only status query.
+    // BCBP transport commands (shared namespace).
     CMD_BLOB_BEGIN = 0x60,
     CMD_BLOB_DATA = 0x61,
     CMD_BLOB_END = 0x62,
     CMD_BLOB_ACK = 0x63,
-    CMD_STATUS_QUERY = 0x64
+    // Generic read-only status query. The response is a BLOB stream.
+    CMD_STATUS_QUERY = 0x64,
+
+    // Application extension namespace: 0x80–0xBF.
+    // These assignments are currently used by matrix-clock. The BCBP core
+    // only transports these commands; it does not interpret their payload.
+    CMD_TIME_SYNC_LO = 0x80,
+    CMD_TIME_SYNC_HI = 0x81,
+    CMD_TIME_SYNC_COMMIT = 0x82,
+    CMD_TIME_SYNC_ACK = 0x83,
+    CMD_WIFI_SSID_BEGIN = 0x84,
+    CMD_WIFI_SSID_DATA = 0x85,
+    CMD_WIFI_SSID_COMMIT = 0x86,
+    CMD_WIFI_PASSWORD_BEGIN = 0x87,
+    CMD_WIFI_PASSWORD_DATA = 0x88,
+    CMD_WIFI_PASSWORD_COMMIT = 0x89,
+    CMD_TIMEZONE_MINUTES = 0x8A,
+    CMD_SYNC_INTERVAL_MINUTES = 0x8B,
+    CMD_BLE_NAME_BEGIN = 0x8C,
+    CMD_BLE_NAME_DATA = 0x8D,
+    CMD_BLE_NAME_COMMIT = 0x8E,
+    CMD_SETTINGS_ACK = 0x8F,
+    CMD_NET_INFO_QUERY = 0x90,
+    CMD_NET_INFO_IP_LO = 0x91,
+    CMD_NET_INFO_IP_HI = 0x92,
+    CMD_NET_INFO_ID_BEGIN = 0x93,
+    CMD_NET_INFO_ID_DATA = 0x94,
+    CMD_NET_INFO_ID_COMMIT = 0x95
 };
 
 // The receiver allocates this buffer once. Do not raise this without checking

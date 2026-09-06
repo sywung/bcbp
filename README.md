@@ -5,10 +5,29 @@
 ## 功能特色
 
 *   **自動化 BLE 管理**：處理初始化、廣播與連線生命週期。
-*   **內建 BCBP 協定**：內建 BCBP v1 封包的編碼與解碼功能。
+*   **內建 BCBP 協定**：支援 BCBP v1 固定封包、v2 變長封包與 BLOB transport。
 *   **事件驅動架構**：使用 Callback 回呼函式來處理連線狀態變更與接收到的封包。
 *   **電池服務支援**：支援標準 BLE Battery Service (0x180F)。
 *   **低延遲效能**：基於高效能的 `NimBLE-Arduino` 底層。
+
+## Command Namespace
+
+BCBP 使用以下 command namespace：
+
+```text
+0x00–0x7F：BCBP core / 保留區
+0x60–0x63：BCBP BLOB transport
+0x64：通用唯讀 STATUS_QUERY（回應使用 BLOB）
+0x65–0x6F：保留給 BCBP transport 擴充
+0x70–0x7F：未來 BCBP 共用能力
+0x80–0xBF：application / project extension
+0xC0–0xDF：vendor extension
+0xE0–0xFE：experimental
+0xFF：保留
+```
+
+BCBP library 只負責 frame、CRC、BLE transport 與 BLOB；不解析 `0x80` 以上的 application payload。
+目前 `matrix-clock` 使用 `0x80–0x95`，BLETestor 的 v1 core commands 維持既有值。
 
 ## 相依套件
 
